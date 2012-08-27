@@ -22,6 +22,7 @@
 #import <UIKit/UIKit.h>
 #import "NSDictionary+Extensions.h"
 #import "CDVNotification.h"
+#import "CDVDebug.h"
 
 
 @implementation CDVContactsPicker
@@ -251,9 +252,9 @@
     NSArray* fields = [arguments objectAtIndex:1];
 	NSDictionary* findOptions = options;
 	ABAddressBookRef  addrBook = nil;
-	NSArray* foundRecords = nil;
 
 	addrBook = ABAddressBookCreate();
+	
 	// get the findOptions values
 	BOOL multiple = NO; // default is false
 	NSString* filter = nil;
@@ -269,11 +270,22 @@
 	}
 
 	NSDictionary* returnFields = [[CDVContact class] calcReturnFields: fields];
+
+	// Support AddressBook source selection
+	NSString *source = (NSString *)[findOptions objectForKey:@"source"] ?: @"all";
+
+	NSArray* foundRecords;
+	if([source isEqualToString:@"all"]) {
+		foundRecords = (NSArray*)ABAddressBookCopyArrayOfAllPeople(addrBook);
+	} else if([source isEqualToString:@"default"]) {
+		foundRecords = (NSArray*)ABAddressBookCopyArrayOfAllPeopleInSource(addrBook, ABAddressBookCopyDefaultSource(addrBook));
+	} else {
+		//@todo
+		ALog(@"ERROR: Source %@ not supported.", source);
+	}
 	
 	NSMutableArray* matches = nil;
-	if (!filter || [filter isEqualToString:@""]){ 
-		// get all records 
-		foundRecords = (NSArray*)ABAddressBookCopyArrayOfAllPeople(addrBook);
+	if (!filter || [filter isEqualToString:@""]) { 
 		if (foundRecords && [foundRecords count] > 0){
 			// create Contacts and put into matches array
             // doesn't make sense to ask for all records when multiple == NO but better check
@@ -287,7 +299,6 @@
 			}
 		}
 	} else {
-		foundRecords = (NSArray*)ABAddressBookCopyArrayOfAllPeople(addrBook);
 		matches = [NSMutableArray arrayWithCapacity:1];
 		BOOL bFound = NO;
 		int testCount = [foundRecords count];
@@ -324,14 +335,14 @@
     // NSLog(@"findCallback string: %@", jsString);
 	
 
-	if(addrBook){
+	if(addrBook) {
 		CFRelease(addrBook);
 	}
-	if (foundRecords){
+	if (foundRecords) {
 		[foundRecords release];
 	}
 	
-	if(jsString){
+	if(jsString) {
 		[self writeJavascript:jsString];
     }
 	return;

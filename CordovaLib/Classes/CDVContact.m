@@ -18,6 +18,7 @@
  */
 
 #import "CDVContact.h"
+#import "CDVDebug.h"
 #import "NSDictionary+Extensions.h"
 
 #define DATE_OR_NULL(dateObj) ( (aDate != nil) ? (id)([aDate descriptionWithLocale: [NSLocale currentLocale]]) : (id)([NSNull null]) )
@@ -408,6 +409,9 @@ static NSDictionary*	org_apache_cordova_contacts_defaultFields = nil;
 	
 	return bSuccess;
 }
+
+#pragma mark - AddressBook property manipulation
+
 /* Set item into an AddressBook Record for the specified property.
  * aValue - the value to set into the address book (code checks for null or [NSNull null]
  * aProperty - AddressBook property ID
@@ -419,7 +423,6 @@ static NSDictionary*	org_apache_cordova_contacts_defaultFields = nil;
  */
 - (bool) setValue: (id)aValue forProperty: (ABPropertyID) aProperty inRecord: (ABRecordRef) aRecord asUpdate: (BOOL) bUpdate
 {
-	
 	bool bSuccess = true;  // if property was null, just ignore and return success
 	CFErrorRef error;
 	if (aValue && ![aValue isKindOfClass:[NSNull class]]){
@@ -428,33 +431,30 @@ static NSDictionary*	org_apache_cordova_contacts_defaultFields = nil;
 		} // really only need to set if different - more efficient to just update value or compare and only set if necessay???
 		bSuccess = ABRecordSetValue(aRecord, aProperty, aValue, &error);
 		if (!bSuccess){
-			NSLog(@"error setting %d property", aProperty);
+			ALog(@"ERROR: Failed to set value=%@ for property=%d with error=%@", aValue, aProperty, CFErrorCopyDescription(error));
 		}
 	}
-
 	return bSuccess;
-	
 }
--(bool) removeProperty: (ABPropertyID) aProperty inRecord: (ABRecordRef) aRecord{
-	CFErrorRef err;
-	bool bSuccess = ABRecordRemoveValue(aRecord, aProperty, &err);
+-(bool) removeProperty: (ABPropertyID) aProperty inRecord: (ABRecordRef) aRecord
+{	
+	CFErrorRef error;
+	bool bSuccess = ABRecordRemoveValue(aRecord, aProperty, &error);
 	if(!bSuccess){
-		CFStringRef errDescription = CFErrorCopyDescription(err);
-		NSLog(@"Unable to remove property %@: %@", aProperty, errDescription );
-		CFRelease(errDescription);
+		ALog(@"ERROR: Failed to remove property=%d with error=%@", aProperty, CFErrorCopyDescription(error));
 	}
 	return bSuccess;
 }
 
--(bool) addToMultiValue: (ABMultiValueRef) multi fromDictionary: dict{
-	bool bSuccess = FALSE;  
+-(bool) addToMultiValue: (ABMultiValueRef) multi fromDictionary: dict
+{
+	
 	id value = [dict valueForKey:kW3ContactFieldValue];
-	if (IS_VALID_VALUE(value)){
-		NSString* label = (NSString*)[CDVContact convertContactTypeToPropertyLabel:[dict valueForKey:kW3ContactFieldType]];
-		bSuccess = ABMultiValueAddValueAndLabel(multi, value,(CFStringRef)label, NULL);
-		if (!bSuccess) {
-			NSLog(@"Error setting Value: %@ and label: %@", value, label);
-		}
+	if(!IS_VALID_VALUE(value)) return FALSE;
+	NSString *label = (NSString *)[CDVContact convertContactTypeToPropertyLabel:[dict valueForKey:kW3ContactFieldType]];
+	bool bSuccess = ABMultiValueAddValueAndLabel(multi, value,(CFStringRef)label, NULL);
+	if (!bSuccess) {
+		ALog(@"ERROR: Failed to set value=%@ and label=%@", value, label);
 	}
 	return bSuccess;
 }
@@ -465,14 +465,15 @@ static NSDictionary*	org_apache_cordova_contacts_defaultFields = nil;
 	for (NSDictionary *dict in array){
 		[self addToMultiValue: multi fromDictionary: dict];
 	}
-	return multi;  //caller is responsible for releasing multi
+	return multi;  // caller is responsible for releasing multi
 }
--(bool) setValue: (CFTypeRef) value  forProperty: (ABPropertyID)prop inRecord: (ABRecordRef)person
+
+-(bool) setValue: (CFTypeRef) aValue  forProperty: (ABPropertyID)aProperty inRecord: (ABRecordRef)person
 {
 	CFErrorRef error;
-	bool bSuccess = ABRecordSetValue(person, prop,  value, &error);
+	bool bSuccess = ABRecordSetValue(person, aProperty, aValue, &error);
 	if (!bSuccess) {
-		NSLog(@"Error setting value for property: %d", prop);
+		ALog(@"ERROR: Failed to set value=%@ for property=%d with error=%@", aValue, aProperty, CFErrorCopyDescription(error));
 	}
 	return bSuccess;
 }
@@ -703,7 +704,7 @@ static NSDictionary*	org_apache_cordova_contacts_defaultFields = nil;
 							NSMutableDictionary* addDict = [NSMutableDictionary dictionaryWithCapacity:2];
 							// get the type out of the original dictionary for address
                             NSObject* typeValue = ((prop == kABPersonInstantMessageProperty) ? (NSObject*)kABOtherLabel : (NSString*)[field valueForKey: kW3ContactFieldType]);
-                            NSLog(@"typeValue: %@", typeValue);
+                            //NSLog(@"typeValue: %@", typeValue);
                             [addDict setObject: typeValue forKey: kW3ContactFieldType];  //  im labels will be set as Other and address labels as type from dictionary
 							[addDict setObject: dict forKey:kW3ContactFieldValue];
 							[self addToMultiValue: multi fromDictionary: addDict];
