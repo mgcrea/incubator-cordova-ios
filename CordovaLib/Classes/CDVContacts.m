@@ -28,7 +28,8 @@
 
 @synthesize allowsEditing;
 @synthesize callbackId;
-@synthesize selectedId;
+@synthesize options;
+@synthesize pickedContactDictionary;
 
 @end
 @implementation CDVNewContactsController
@@ -179,7 +180,8 @@
 	CDVContactsPicker* pickerController = [[[CDVContactsPicker alloc] init] autorelease];
 	pickerController.peoplePickerDelegate = self;
 	pickerController.callbackId = callbackId;
-	pickerController.selectedId = kABRecordInvalidID;
+	pickerController.options = options;
+	pickerController.pickedContactDictionary = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:kABRecordInvalidID], @"id", nil];
 	pickerController.allowsEditing = (BOOL)[options existsValue:@"true" forKey:@"allowsEditing"];
 	
     if ([self.viewController respondsToSelector:@selector(presentViewController:::)]) {
@@ -194,9 +196,12 @@
 {
 	
 	CDVContactsPicker* picker = (CDVContactsPicker*)peoplePicker;
-	ABRecordID contactId = ABRecordGetRecordID(person);
-	picker.selectedId = contactId; // save so can return when dismiss
 
+	// Retreive pickedContact information
+	CDVContact* pickedContact = [[[CDVContact alloc] initFromABRecord:(ABRecordRef)person] autorelease];
+	NSArray *fields = [picker.options objectForKey:@"fields"] ?: [NSArray arrayWithObjects:@"id", nil];
+	NSDictionary *returnFields = [[CDVContact class] calcReturnFields: fields];
+	picker.pickedContactDictionary = [pickedContact toDictionary:returnFields];
 	
 	if (picker.allowsEditing) {
 		
@@ -208,8 +213,8 @@
 		
 		[peoplePicker pushViewController:personController animated:YES];
 	} else {
-		// return the contact Id
-		CDVPluginResult* result = [CDVPluginResult resultWithStatus: CDVCommandStatus_OK messageAsInt: contactId];
+		// return the pickedContact information
+		CDVPluginResult *result = [CDVPluginResult resultWithStatus: CDVCommandStatus_OK messageAsDictionary: picker.pickedContactDictionary];
 		[self writeJavascript:[result toSuccessCallbackString: picker.callbackId]];
 		
         if ([picker respondsToSelector:@selector(presentingViewController)]) { 
@@ -231,7 +236,7 @@
 {
 	// return contactId or invalid if none picked
 	CDVContactsPicker* picker = (CDVContactsPicker*)peoplePicker;
-	CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt: picker.selectedId];
+	CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:picker.pickedContactDictionary];
 	[self writeJavascript:[result toSuccessCallbackString:picker.callbackId]];
 	
     if ([peoplePicker respondsToSelector:@selector(presentingViewController)]) { 
