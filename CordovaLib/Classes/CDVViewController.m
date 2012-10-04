@@ -632,7 +632,12 @@
 {
     NSString* launchImageFile = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"UILaunchImageFile"];
     if (launchImageFile == nil) { // fallback if no launch image was specified
-        launchImageFile = @"Default"; 
+        if (CDV_IsIPhone5()) {
+            // iPhone 5 or iPod Touch 6th-gen
+            launchImageFile = @"Default-568h";
+        } else {
+            launchImageFile = @"Default";
+        }
     }
     
     NSString* orientedLaunchImageFile = nil;    
