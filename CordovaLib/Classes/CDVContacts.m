@@ -298,12 +298,20 @@ dispatch_queue_t workQueue = nil;
         }
         
         NSDictionary* returnFields = [[CDVContact class] calcReturnFields: fields];
-        
+
+        // Support AddressBook source selection
+        NSString *source = (NSString *)[findOptions objectForKey:@"source"] ?: @"all";
+        if([source isEqualToString:@"all"]) {
+            // get all records
+            foundRecords = (__bridge_transfer NSArray*)ABAddressBookCopyArrayOfAllPeople(addrBook);
+        } else if([source isEqualToString:@"default"]) {
+            foundRecords = (__bridge_transfer NSArray*)ABAddressBookCopyArrayOfAllPeopleInSource(addrBook, ABAddressBookCopyDefaultSource(addrBook));
+        } else {
+            NSLog(@"Source %@ not supported.", source);
+        }
         
         NSMutableArray* matches = nil;
         if (!filter || [filter isEqualToString:@""]){
-            // get all records
-            foundRecords = (__bridge_transfer NSArray*)ABAddressBookCopyArrayOfAllPeople(addrBook);
             if (foundRecords && [foundRecords count] > 0){
                 // create Contacts and put into matches array
                 // doesn't make sense to ask for all records when multiple == NO but better check
