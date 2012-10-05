@@ -672,7 +672,7 @@ static NSDictionary*	org_apache_cordova_contacts_defaultFields = nil;
 							NSMutableDictionary* addDict = [NSMutableDictionary dictionaryWithCapacity:2];
 							// get the type out of the original dictionary for address
                             NSObject* typeValue = ((prop == kABPersonInstantMessageProperty) ? (NSObject*)kABOtherLabel : (NSString*)[field valueForKey: kW3ContactFieldType]);
-                            NSLog(@"typeValue: %@", typeValue);
+                            //NSLog(@"typeValue: %@", typeValue);
                             [addDict setObject: typeValue forKey: kW3ContactFieldType];  //  im labels will be set as Other and address labels as type from dictionary
 							[addDict setObject: dict forKey:kW3ContactFieldValue];
 							[self addToMultiValue: multi fromDictionary: addDict];
